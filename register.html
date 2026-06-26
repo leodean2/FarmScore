@@ -142,7 +142,7 @@ function selectRole(role) {
   selectedRole = role;
   document.getElementById('role-farmer').classList.toggle('selected', role === 'farmer');
   document.getElementById('role-admin').classList.toggle('selected',  role === 'admin');
-  document.getElementById('admin-secret-field').style.display = role === 'admin' ? 'flex' : 'none';
+  document.getElementById('admin-secret-field').style.display = role === 'admin' ? 'block' : 'none';
 }
 
 async function register() {
