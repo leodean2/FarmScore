@@ -818,39 +818,96 @@ FarmScore: <strong>${d.total}/100 — ${grade.grade}</strong>.
 ${grade.tagline}${d.notes ? '<br><br><em>Farmer note: ' + d.notes + '</em>' : ''}`;
 }
 
+const API = 'http://localhost:3000';
+
 // ── Generate score ────────────────────────────────────────────────────────────
 
-function generateScore() {
-  // Validate required fields
+async function generateScore() {
   const name = document.getElementById('farmer-name').value.trim();
   if (!name) { alert('Please enter the farmer name.'); return; }
 
-  // Hide form, show loading
+  // Collect form data
+  const timingSelected = document.querySelector('#plant-timing label.selected');
+  const lossSelected   = document.querySelector('#crop-loss label.selected');
+  const advAccess      = document.querySelector('#advisory-access label.selected');
+  const advFollow      = document.querySelector('#advisory-follow label.selected');
+  const coop           = document.querySelector('#cooperative label.selected');
+
+  const payload = {
+    name,
+    county:    document.getElementById('county').value,
+    crop:      document.getElementById('crop').value,
+    size:      parseFloat(document.getElementById('farm-size').value),
+    seasons:   parseInt(document.getElementById('seasons').value),
+    timing:    timingSelected ? timingSelected.querySelector('input').value : '',
+    inputs:    [...document.querySelectorAll('#inputs-used label.selected')].map(l => l.querySelector('input').value),
+    fertRate:  document.getElementById('fertiliser-rate').value,
+    yield:     document.getElementById('yield-level').value,
+    loss:      lossSelected ? lossSelected.querySelector('input').value : 'none',
+    advisory:  advAccess ? advAccess.querySelector('input').value : 'never',
+    follow:    advFollow ? advFollow.querySelector('input').value : 'rarely',
+    coop:      coop ? coop.querySelector('input').value : 'no',
+    prevLoan:  document.getElementById('prev-loan').value,
+    purpose:   document.getElementById('loan-purpose').value,
+    notes:     document.getElementById('notes').value,
+  };
+
+  // Show loading
   document.getElementById('section-3').style.display = 'none';
   document.getElementById('step-indicator').style.display = 'none';
   const loading = document.getElementById('loading-screen');
   loading.style.display = 'flex';
   window.scrollTo({top:0, behavior:'smooth'});
 
-  // Animate loading steps
   const steps = ['ls1','ls2','ls3','ls4','ls5'];
-  steps.forEach((id, i) => {
+  steps.forEach((id, i) => setTimeout(() => document.getElementById(id).classList.add('visible'), 400 + i * 500));
+
+  try {
+    const res  = await fetch(`${API}/api/farmers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'API error');
+
+    const s = json.score;
     setTimeout(() => {
-      document.getElementById(id).classList.add('visible');
-    }, 400 + i * 500);
-  });
-
-  // Calculate
-  const data = scoreData();
-
-  setTimeout(() => {
+      loading.style.display = 'none';
+      renderResult({
+        total:     s.total,
+        agrScore:  s.breakdown.agrScore,
+        prodScore: s.breakdown.prodScore,
+        advScore:  s.breakdown.advScore,
+        finScore:  s.breakdown.finScore,
+        name:      payload.name,
+        county:    payload.county,
+        crop:      payload.crop,
+        timing:    payload.timing,
+        inputs:    payload.inputs,
+        yield:     payload.yield,
+        loss:      payload.loss,
+        advisory:  payload.advisory,
+        follow:    payload.follow,
+        coop:      payload.coop,
+        prevLoan:  payload.prevLoan,
+        notes:     payload.notes,
+        seasons:   payload.seasons,
+        _flags:    s.flags,
+        _grade:    { grade: s.grade, tagline: s.tagline },
+      });
+    }, 3200);
+  } catch (err) {
     loading.style.display = 'none';
-    renderResult(data);
-  }, 3200);
+    document.getElementById('section-3').style.display = 'block';
+    document.getElementById('step-indicator').style.display = 'flex';
+    alert('Could not reach the FarmScore API. Is the backend running?\n\n' + err.message);
+  }
 }
 
 function renderResult(d) {
-  const gradeInfo = gradeFromScore(d.total);
+  const gradeInfo = d._grade || gradeFromScore(d.total);
+  const flags     = d._flags || buildFlags(d);
 
   // Step indicator → step 4
   const si = document.getElementById('step-indicator');
@@ -912,12 +969,10 @@ function renderResult(d) {
   }, 100);
 
   // Flags
-  const flags = buildFlags(d);
   document.getElementById('flags-container').innerHTML = flags.map(f =>
     `<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`
   ).join('');
 
-  // Summary
   document.getElementById('summary-text').innerHTML = buildSummary(d, gradeInfo);
 
   window.scrollTo({top:0, behavior:'smooth'});

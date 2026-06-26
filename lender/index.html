@@ -400,81 +400,22 @@
 </div>
 
 <script>
-// ── Sample farmer data ────────────────────────────────────────────────────────
-const FARMERS = [
-  {
-    id: 1, name: "Jane Wanjiku", county: "Nakuru", crop: "Maize", size: 3, seasons: 8,
-    total: 87, agrScore: 23, prodScore: 22, advScore: 24, finScore: 18,
-    timing: "on-time", inputs: ["certified-seed","fertiliser","herbicide"],
-    fertRate: "correct", yield: "excellent", loss: "none",
-    advisory: "regular", follow: "always", coop: "yes-active",
-    prevLoan: "yes-repaid", purpose: "inputs", notes: "Active member of Nakuru Maize Cooperative. Yield records verified by extension worker.",
-    submitted: "2026-06-20"
-  },
-  {
-    id: 2, name: "Peter Otieno", county: "Kisii", crop: "Tomatoes", size: 1.5, seasons: 4,
-    total: 72, agrScore: 19, prodScore: 18, advScore: 20, finScore: 15,
-    timing: "on-time", inputs: ["certified-seed","fertiliser","pesticide"],
-    fertRate: "correct", yield: "good", loss: "minor",
-    advisory: "regular", follow: "mostly", coop: "yes-active",
-    prevLoan: "no", purpose: "inputs", notes: "First-time borrower. Good extension relationship with Kisii ATC.",
-    submitted: "2026-06-21"
-  },
-  {
-    id: 3, name: "Mary Chebet", county: "Uasin Gishu", crop: "Maize", size: 5, seasons: 12,
-    total: 68, agrScore: 18, prodScore: 17, advScore: 16, finScore: 17,
-    timing: "on-time", inputs: ["certified-seed","fertiliser","compost"],
-    fertRate: "under", yield: "good", loss: "minor",
-    advisory: "sometimes", follow: "mostly", coop: "yes-inactive",
-    prevLoan: "yes-repaid", purpose: "equipment", notes: "Experienced farmer. Advisory access is occasional due to distance from extension office.",
-    submitted: "2026-06-19"
-  },
-  {
-    id: 4, name: "Samuel Kamau", county: "Nyandarua", crop: "Potatoes", size: 2, seasons: 3,
-    total: 54, agrScore: 14, prodScore: 13, advScore: 15, finScore: 12,
-    timing: "late", inputs: ["fertiliser"],
-    fertRate: "under", yield: "fair", loss: "moderate",
-    advisory: "sometimes", follow: "sometimes", coop: "no",
-    prevLoan: "no", purpose: "inputs", notes: "Faced late rains last season. Planning to improve timing with input financing.",
-    submitted: "2026-06-22"
-  },
-  {
-    id: 5, name: "Grace Akinyi", county: "Bungoma", crop: "Beans", size: 1, seasons: 2,
-    total: 41, agrScore: 11, prodScore: 10, advScore: 12, finScore: 8,
-    timing: "late", inputs: ["certified-seed"],
-    fertRate: "na", yield: "fair", loss: "moderate",
-    advisory: "rarely", follow: "sometimes", coop: "no",
-    prevLoan: "no", purpose: "inputs", notes: "New farmer building track record. Would benefit from advisory support alongside loan.",
-    submitted: "2026-06-23"
-  },
-  {
-    id: 6, name: "David Mwangi", county: "Murang'a", crop: "Kale", size: 0.5, seasons: 6,
-    total: 78, agrScore: 20, prodScore: 19, advScore: 21, finScore: 18,
-    timing: "on-time", inputs: ["certified-seed","compost","irrigation"],
-    fertRate: "correct", yield: "good", loss: "none",
-    advisory: "regular", follow: "always", coop: "yes-active",
-    prevLoan: "yes-active", purpose: "irrigation", notes: "Smallholder with reliable irrigation setup. Active kale supply to local market.",
-    submitted: "2026-06-18"
-  },
-  {
-    id: 7, name: "Fatuma Hassan", county: "Meru", crop: "Maize", size: 4, seasons: 9,
-    total: 31, agrScore: 8, prodScore: 7, advScore: 9, finScore: 7,
-    timing: "missed", inputs: ["none"],
-    fertRate: "na", yield: "poor", loss: "major",
-    advisory: "never", follow: "rarely", coop: "no",
-    prevLoan: "yes-default", purpose: "inputs", notes: "Experienced significant drought impact last two seasons.",
-    submitted: "2026-06-24"
-  },
-  {
-    id: 8, name: "John Kipkoech", county: "Nandi", crop: "Maize", size: 6, seasons: 15,
-    total: 82, agrScore: 22, prodScore: 21, advScore: 20, finScore: 19,
-    timing: "on-time", inputs: ["certified-seed","fertiliser","herbicide","pesticide"],
-    fertRate: "correct", yield: "excellent", loss: "none",
-    advisory: "regular", follow: "always", coop: "yes-active",
-    prevLoan: "yes-repaid", purpose: "equipment", notes: "Veteran farmer with strong cooperative ties. Consistent yields over 15 seasons.",
-    submitted: "2026-06-17"
-  },
-];
+const API = 'http://localhost:3000';
+let FARMERS = [];
+
+async function loadFarmers() {
+  try {
+    const res  = await fetch(`${API}/api/farmers`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error);
+    FARMERS = json.farmers || [];
+    updateStats();
+    applyFilters();
+  } catch (err) {
+    document.getElementById('farmer-table-body').innerHTML =
+      `<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--red)">Could not load farmers. Is the backend running?<br><small>${err.message}</small></td></tr>`;
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function gradeFromScore(s) {
@@ -691,20 +632,26 @@ function closeModalDirect() {
   document.body.style.overflow = '';
 }
 
-function recordDecision(type, id) {
+async function recordDecision(type, id) {
   const f = FARMERS.find(x => x.id === id);
-  const msgs = {
-    approve: `✅ ${f.name}'s application has been marked as Approved.\n\nIn the live system this would trigger a notification to the farmer and cooperative.`,
-    review:  `⚑ ${f.name}'s application has been flagged for further review.\n\nIn the live system this would assign the case to a field officer for verification.`,
-    decline: `✕ ${f.name}'s application has been marked as Declined.\n\nIn the live system the farmer would receive a plain-language explanation and next steps.`
-  };
-  alert(msgs[type]);
+  const decisionMap = { approve: 'approved', review: 'review', decline: 'declined' };
+  try {
+    const res = await fetch(`${API}/api/farmers/${id}/decision`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: decisionMap[type] })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error);
+    alert(`✅ Decision recorded: ${json.message}`);
+  } catch (err) {
+    alert(`Failed to record decision: ${err.message}`);
+  }
   closeModalDirect();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-updateStats();
-applyFilters();
+loadFarmers();
 </script>
 </body>
 </html>
