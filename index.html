@@ -134,6 +134,9 @@
     transition: all 0.2s;
   }
   .radio-group input[type=radio] { display: none; }
+  .radio-group input[type=radio]:checked + span {
+    /* handled via JS */
+  }
   .radio-group label.selected {
     border-color: var(--moss); background: var(--moss-lt); color: var(--forest);
   }
@@ -329,7 +332,10 @@
   <div class="nav-brand">
     <span>🌱</span> Farm<span>Score</span>
   </div>
-  <div class="nav-badge">PROTOTYPE · AgriFin Track</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="lender/index.html" style="font-size:0.82rem;color:#A7C4B5;text-decoration:none;font-weight:600;transition:color 0.2s" onmouseover="this.style.color='#52B788'" onmouseout="this.style.color='#A7C4B5'">Lender Dashboard →</a>
+    <div class="nav-badge">FARMER VIEW</div>
+  </div>
 </nav>
 
 <div class="page">
