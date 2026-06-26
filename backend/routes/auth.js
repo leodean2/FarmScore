@@ -1,6 +1,7 @@
 const express  = require('express');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
+require('dotenv').config();
 const { runQuery } = require('../db/neo4j');
 
 const router = express.Router();
