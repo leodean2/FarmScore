@@ -19,6 +19,13 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'role must be farmer or admin' });
     }
 
+    // Validate admin secret
+    if (role === 'admin') {
+      if (!req.body.adminSecret || req.body.adminSecret !== process.env.ADMIN_SECRET) {
+        return res.status(403).json({ error: 'Invalid admin secret key' });
+      }
+    }
+
     // Check if email already exists
     const existing = await runQuery('MATCH (u:User { email: $email }) RETURN u', { email });
     if (existing.length) {

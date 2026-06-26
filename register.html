@@ -120,6 +120,12 @@
       <input type="password" id="password" placeholder="At least 6 characters" />
     </div>
 
+    <div class="field" id="admin-secret-field" style="display:none">
+      <label>Admin secret key</label>
+      <input type="password" id="admin-secret" placeholder="Enter the admin access code" />
+      <span style="font-size:0.75rem;color:var(--muted);margin-top:3px">Contact your organisation to get the admin access code.</span>
+    </div>
+
     <button class="btn-primary" id="register-btn" onclick="register()">Create account</button>
 
     <div class="footer-link">
@@ -136,6 +142,7 @@ function selectRole(role) {
   selectedRole = role;
   document.getElementById('role-farmer').classList.toggle('selected', role === 'farmer');
   document.getElementById('role-admin').classList.toggle('selected',  role === 'admin');
+  document.getElementById('admin-secret-field').style.display = role === 'admin' ? 'flex' : 'none';
 }
 
 async function register() {
@@ -148,6 +155,9 @@ async function register() {
 
   if (!name || !email || !password) { showError('Please fill in all fields.'); return; }
   if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
+  if (selectedRole === 'admin' && !document.getElementById('admin-secret').value) {
+    showError('Please enter the admin secret key.'); return;
+  }
 
   btn.disabled = true;
   btn.textContent = 'Creating account…';
@@ -156,7 +166,10 @@ async function register() {
     const res  = await fetch(`${API}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, role: selectedRole })
+      body: JSON.stringify({
+        name, email, password, role: selectedRole,
+        adminSecret: document.getElementById('admin-secret').value
+      })
     });
     const json = await res.json();
     if (!res.ok) { showError(json.error); return; }
