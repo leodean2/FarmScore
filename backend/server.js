@@ -3,6 +3,8 @@ const cors    = require('cors');
 require('dotenv').config();
 
 const { verifyConnection } = require('./db/neo4j');
+const { requireAuth, requireRole } = require('./middleware/auth');
+const authRouter    = require('./routes/auth');
 const scoreRouter   = require('./routes/score');
 const farmersRouter = require('./routes/farmers');
 
@@ -29,8 +31,9 @@ app.get('/', (req, res) => {
   });
 });
 
-app.use('/api/score',   scoreRouter);
-app.use('/api/farmers', farmersRouter);
+app.use('/api/auth',    authRouter);
+app.use('/api/score',   requireAuth, scoreRouter);
+app.use('/api/farmers', requireAuth, farmersRouter);
 
 // 404 handler
 app.use((req, res) => {
