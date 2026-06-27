@@ -16,5 +16,9 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: PORT
-        value: 3000
+      - key: ADMIN_SECRET
+        sync: false
+      - key: FEATHERLESS_API_KEY
+        sync: false
+      - key: FEATHERLESS_MODEL
+        value: meta-llama/Llama-3.3-70B-Instruct

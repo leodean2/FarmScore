@@ -48,10 +48,16 @@ app.use((err, req, res, next) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 async function start() {
-  await verifyConnection();
-  app.listen(PORT, () => {
-    console.log(`🌱 FarmScore API running on http://localhost:${PORT}`);
-  });
+  try {
+    await verifyConnection();
+    app.listen(PORT, () => {
+      console.log(`🌱 FarmScore API running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err.message);
+    process.exit(1);
+  }
 }
 
 start();

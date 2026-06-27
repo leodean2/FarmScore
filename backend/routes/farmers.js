@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { runQuery } = require('../db/neo4j');
 const { calculateScore, gradeFromScore, buildFlags } = require('../services/scoring');
+const { generateNarrative } = require('../services/narrative');
 
 /**
  * GET /api/farmers
@@ -155,6 +156,16 @@ router.post('/', async (req, res) => {
     const { grade, tagline } = gradeFromScore(total);
     const flags = buildFlags(data);
 
+    // Generate AI narrative (non-blocking — falls back gracefully if API key missing)
+    let narrative = null;
+    try {
+      if (process.env.FEATHERLESS_API_KEY && process.env.FEATHERLESS_API_KEY !== 'your_featherless_api_key_here') {
+        narrative = await generateNarrative(data, { total, grade, flags });
+      }
+    } catch (narrativeErr) {
+      console.warn('Narrative generation failed (non-fatal):', narrativeErr.message);
+    }
+
     const farmerId = `farmer_${Date.now()}`;
     const submittedAt = new Date().toISOString();
 
@@ -233,7 +244,8 @@ router.post('/', async (req, res) => {
       success: true,
       message: 'Farmer scored and saved to graph',
       farmerId,
-      score: { total, agrScore, prodScore, advScore, finScore, grade, tagline, flags }
+      score: { total, agrScore, prodScore, advScore, finScore, grade, tagline, flags },
+      narrative,
     });
   } catch (err) {
     console.error('POST /farmers error:', err);

@@ -920,6 +920,7 @@ async function generateScore() {
         seasons:   payload.seasons,
         _flags:    s.flags,
         _grade:    { grade: s.grade, tagline: s.tagline },
+        _narrative: json.narrative,
       });
     }, 3200);
   } catch (err) {
