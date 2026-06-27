@@ -121,6 +121,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="shared.js"></script>
+<script>
+requireAdmin();
+renderNavUser();
+
+let ALL_FARMERS = [];
+let filtered    = [];
+
+async function loadFarmers() {
   try {
     ALL_FARMERS = await fetchFarmers();
     updateStats();
