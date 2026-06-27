@@ -242,6 +242,90 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * GET /api/farmers/:id/graph
+ * Returns nodes and edges for the farmer's knowledge graph.
+ */
+router.get('/:id/graph', async (req, res) => {
+  try {
+    const records = await runQuery(`
+      MATCH (f:Farmer { id: $id })
+      OPTIONAL MATCH (f)-[:HAS_SEASON]->(s:Season)
+      OPTIONAL MATCH (f)-[:ENGAGED_WITH]->(a:Advisory)
+      OPTIONAL MATCH (f)-[:APPLIED_FOR]->(l:Loan)
+      OPTIONAL MATCH (f)-[:LOCATED_IN]->(c:County)
+      OPTIONAL MATCH (f)-[:GROWS]->(cr:Crop)
+      OPTIONAL MATCH (peer:Farmer)-[:LOCATED_IN]->(c)
+      WHERE peer.id <> f.id
+      OPTIONAL MATCH (peer2:Farmer)-[:GROWS]->(cr)
+      WHERE peer2.id <> f.id
+      RETURN f, s, a, l, c, cr,
+             collect(DISTINCT peer)[..3]  AS countyPeers,
+             collect(DISTINCT peer2)[..3] AS cropPeers
+    `, { id: req.params.id });
+
+    if (!records.length) return res.status(404).json({ error: 'Farmer not found' });
+
+    const rec        = records[0];
+    const f          = rec.get('f').properties;
+    const s          = rec.get('s')  ? rec.get('s').properties  : null;
+    const a          = rec.get('a')  ? rec.get('a').properties  : null;
+    const l          = rec.get('l')  ? rec.get('l').properties  : null;
+    const c          = rec.get('c')  ? rec.get('c').properties  : null;
+    const cr         = rec.get('cr') ? rec.get('cr').properties : null;
+    const countyPeers = rec.get('countyPeers').map(n => n.properties);
+    const cropPeers   = rec.get('cropPeers').map(n => n.properties);
+
+    const nodes = [];
+    const edges = [];
+
+    // Central farmer node
+    nodes.push({ id: f.id, label: f.name, type: 'farmer', score: f.scoreTotal, grade: f.grade });
+
+    if (s) {
+      nodes.push({ id: s.id, label: `Season\n${s.yieldLevel || ''} yield`, type: 'season' });
+      edges.push({ source: f.id, target: s.id, label: 'HAS_SEASON' });
+    }
+    if (a) {
+      nodes.push({ id: a.id, label: `Advisory\n${a.frequency || ''}`, type: 'advisory' });
+      edges.push({ source: f.id, target: a.id, label: 'ENGAGED_WITH' });
+    }
+    if (l) {
+      nodes.push({ id: l.id, label: `Loan\n${l.purpose || ''}`, type: 'loan' });
+      edges.push({ source: f.id, target: l.id, label: 'APPLIED_FOR' });
+    }
+    if (c) {
+      nodes.push({ id: `county_${c.name}`, label: c.name, type: 'county' });
+      edges.push({ source: f.id, target: `county_${c.name}`, label: 'LOCATED_IN' });
+    }
+    if (cr) {
+      nodes.push({ id: `crop_${cr.name}`, label: cr.name, type: 'crop' });
+      edges.push({ source: f.id, target: `crop_${cr.name}`, label: 'GROWS' });
+    }
+
+    // County peers
+    countyPeers.forEach(p => {
+      if (!nodes.find(n => n.id === p.id)) {
+        nodes.push({ id: p.id, label: p.name, type: 'peer', score: p.scoreTotal });
+      }
+      if (c) edges.push({ source: p.id, target: `county_${c.name}`, label: 'LOCATED_IN' });
+    });
+
+    // Crop peers
+    cropPeers.forEach(p => {
+      if (!nodes.find(n => n.id === p.id)) {
+        nodes.push({ id: p.id, label: p.name, type: 'peer', score: p.scoreTotal });
+      }
+      if (cr) edges.push({ source: p.id, target: `crop_${cr.name}`, label: 'GROWS' });
+    });
+
+    return res.json({ success: true, nodes, edges });
+  } catch (err) {
+    console.error('GET /farmers/:id/graph error:', err);
+    return res.status(500).json({ error: 'Failed to fetch graph', detail: err.message });
+  }
+});
+
+/**
  * PATCH /api/farmers/:id/decision
  * Records a loan officer decision on a farmer application.
  */

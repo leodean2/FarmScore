@@ -154,3 +154,10 @@ tbody td { padding: 12px 14px; font-size: 0.875rem; vertical-align: middle; }
 /* ── Responsive ── */
 @media (max-width: 900px) { .sidebar { display: none; } .stats-row { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .main { padding: 1rem; } .stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; } .modal-panel { width: 100vw; } table { font-size: 0.8rem; } }
+
+/* ── Modal tabs ── */
+.modal-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 1rem; }
+.modal-tab { background: none; border: none; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-family: inherit; transition: all 0.2s; }
+.modal-tab:hover { color: var(--forest); }
+.modal-tab.active { color: var(--forest); border-bottom-color: var(--forest); }
+.tab-panel { display: flex; flex-direction: column; gap: 1.25rem; }
