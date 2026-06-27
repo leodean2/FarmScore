@@ -1,6 +1,6 @@
 // ── shared.js — used across all lender pages ─────────────────────────────────
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'https://farmscore.onrender.com/api';
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 function getToken()    { return localStorage.getItem('fs_token'); }
