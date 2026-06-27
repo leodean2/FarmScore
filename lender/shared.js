@@ -3,8 +3,8 @@
 const API_BASE = 'http://localhost:3000/api';
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
-function getToken()    { return localStorage.getItem('token'); }
-function getUser()     { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
+function getToken()    { return localStorage.getItem('fs_token'); }
+function getUser()     { try { return JSON.parse(localStorage.getItem('fs_user')); } catch { return null; } }
 
 function requireAdmin() {
   const token = getToken();
@@ -15,8 +15,8 @@ function requireAdmin() {
 }
 
 function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  localStorage.removeItem('fs_token');
+  localStorage.removeItem('fs_user');
   window.location.href = '../login.html';
 }
 
