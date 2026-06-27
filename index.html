@@ -448,13 +448,13 @@
         <div class="field full">
           <label>Which inputs did you use last season? <span class="req">*</span></label>
           <div class="check-group" id="inputs-used">
-            <label onclick="selectCheck(this)"><input type="checkbox" value="certified-seed"/><span>Certified seed</span></label>
-            <label onclick="selectCheck(this)"><input type="checkbox" value="fertiliser"/><span>Fertiliser</span></label>
-            <label onclick="selectCheck(this)"><input type="checkbox" value="pesticide"/><span>Pesticides</span></label>
-            <label onclick="selectCheck(this)"><input type="checkbox" value="herbicide"/><span>Herbicides</span></label>
-            <label onclick="selectCheck(this)"><input type="checkbox" value="irrigation"/><span>Irrigation</span></label>
-            <label onclick="selectCheck(this)"><input type="checkbox" value="compost"/><span>Compost / manure</span></label>
-            <label onclick="selectCheck(this)"><input type="checkbox" value="none"/><span>None of the above</span></label>
+            <label><input type="checkbox" value="certified-seed"/><span>Certified seed</span></label>
+            <label><input type="checkbox" value="fertiliser"/><span>Fertiliser</span></label>
+            <label><input type="checkbox" value="pesticide"/><span>Pesticides</span></label>
+            <label><input type="checkbox" value="herbicide"/><span>Herbicides</span></label>
+            <label><input type="checkbox" value="irrigation"/><span>Irrigation</span></label>
+            <label><input type="checkbox" value="compost"/><span>Compost / manure</span></label>
+            <label><input type="checkbox" value="none"/><span>None of the above</span></label>
           </div>
         </div>
         <div class="field">
@@ -649,13 +649,51 @@ function updateRange(id, valId, suffix) {
 
 function selectRadio(groupId, clicked) {
   const group = document.getElementById(groupId);
-  group.querySelectorAll('label').forEach(l => l.classList.remove('selected'));
+  group.querySelectorAll('label').forEach(l => {
+    l.classList.remove('selected');
+    const i = l.querySelector('input');
+    if (i) i.checked = false;
+  });
   clicked.classList.add('selected');
+  const input = clicked.querySelector('input');
+  if (input) input.checked = true;
 }
 
 function selectCheck(clicked) {
-  clicked.classList.toggle('selected');
+  const input = clicked.querySelector('input');
+  const isNone = input && input.value === 'none';
+  const isSelected = clicked.classList.toggle('selected');
+  if (input) input.checked = isSelected;
+
+  // If 'None of the above' is selected, clear other selections in the group
+  const parent = clicked.parentElement;
+  if (isNone && isSelected && parent) {
+    parent.querySelectorAll('label').forEach(l => {
+      if (l !== clicked) {
+        l.classList.remove('selected');
+        const inp = l.querySelector('input');
+        if (inp) inp.checked = false;
+      }
+    });
+  }
+
+  // If any other option is selected, ensure 'none' is cleared
+  if (!isNone && isSelected && parent) {
+    const noneInput = parent.querySelector('label input[value="none"]');
+    if (noneInput) {
+      noneInput.checked = false;
+      noneInput.parentElement.classList.remove('selected');
+    }
+  }
 }
+
+// Attach a delegated click handler for checkbox chips so label clicks always activate.
+document.addEventListener('click', event => {
+  const label = event.target.closest('#inputs-used label');
+  if (!label) return;
+  event.preventDefault();
+  selectCheck(label);
+});
 
 function goTo(section) {
   [1,2,3].forEach(i => {
@@ -820,7 +858,7 @@ FarmScore: <strong>${d.total}/100 — ${grade.grade}</strong>.
 ${grade.tagline}${d.notes ? '<br><br><em>Farmer note: ' + d.notes + '</em>' : ''}`;
 }
 
-const API = 'https://farmscore.onrender.com';
+const API = (['localhost','127.0.0.1'].includes(window.location.hostname) ? 'http://localhost:3000' : 'https://farmscore.onrender.com');
 
 // ── Auth guard ──────────────────────────────────────────────────────────
 (function() {
@@ -897,14 +935,29 @@ async function generateScore() {
     if (!res.ok) throw new Error(json.error || 'API error');
 
     const s = json.score;
+    const breakdown = s && (s.breakdown || {
+      agrScore: s?.agrScore ?? 0,
+      prodScore: s?.prodScore ?? 0,
+      advScore: s?.advScore ?? 0,
+      finScore: s?.finScore ?? 0,
+    });
+    if (!s || !breakdown) {
+      loading.style.display = 'none';
+      document.getElementById('section-3').style.display = 'block';
+      document.getElementById('step-indicator').style.display = 'flex';
+      console.error('Invalid API response (missing score or breakdown):', json);
+      alert('Received unexpected response from the FarmScore API. See console for details.');
+      return;
+    }
+
     setTimeout(() => {
       loading.style.display = 'none';
       renderResult({
         total:     s.total,
-        agrScore:  s.breakdown.agrScore,
-        prodScore: s.breakdown.prodScore,
-        advScore:  s.breakdown.advScore,
-        finScore:  s.breakdown.finScore,
+        agrScore:  breakdown.agrScore,
+        prodScore: breakdown.prodScore,
+        advScore:  breakdown.advScore,
+        finScore:  breakdown.finScore,
         name:      payload.name,
         county:    payload.county,
         crop:      payload.crop,
