@@ -334,7 +334,6 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px">
     <span id="nav-user-name" style="font-size:0.82rem;color:#A7C4B5;font-weight:600"></span>
-    <a href="lender/index.html" style="font-size:0.82rem;color:#A7C4B5;text-decoration:none;font-weight:600;transition:color 0.2s" onmouseover="this.style.color='#52B788'" onmouseout="this.style.color='#A7C4B5'">Lender Dashboard →</a>
     <button onclick="logout()" style="background:none;border:1px solid #52B788;color:#52B788;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.78rem;font-weight:600">Log out</button>
     <div class="nav-badge">FARMER VIEW</div>
   </div>
@@ -818,28 +817,28 @@ function buildFlags(d) {
   const flags = [];
 
   // Positives
-  if (d.timing === 'on-time') flags.push({ type:'positive', icon:'✅', title:'Planted on time', body:'Farmer planted within the recommended window last season — a strong indicator of planning and discipline.' });
-  if (d.advisory === 'regular' && d.follow === 'always') flags.push({ type:'positive', icon:'✅', title:'Consistent advisory follow-through', body:'Farmer regularly receives advice and consistently follows recommendations — the single strongest predictor of good outcomes.' });
-  if (d.yield === 'good' || d.yield === 'excellent') flags.push({ type:'positive', icon:'✅', title:'Above-average yield reported', body:'Self-reported yield is above average for the region and crop type. Recommend extension worker verification for higher loan amounts.' });
-  if (d.coop === 'yes-active') flags.push({ type:'positive', icon:'✅', title:'Active cooperative member', body:'Cooperative membership provides social accountability and potential for group guarantee — reduces lender risk.' });
-  if (d.prevLoan === 'yes-repaid') flags.push({ type:'positive', icon:'✅', title:'Previous loan fully repaid', body:'Farmer has a track record of repaying agricultural credit. This is a meaningful positive signal.' });
-  if (d.inputs.includes('certified-seed') && d.inputs.includes('fertiliser')) flags.push({ type:'positive', icon:'✅', title:'Good input package', body:'Farmer used certified seed and fertiliser — evidence of investment in production quality.' });
-  if (d.seasons >= 5) flags.push({ type:'positive', icon:'✅', title: d.seasons + ' seasons of experience', body: 'Farmer has significant experience on this land, reducing seasonal risk.' });
+  if (d.timing === 'on-time') flags.push({ type:'positive', icon:'✅', area:'Agronomic practice', title:'Planted on time', body:'Farmer planted within the recommended window last season — a strong indicator of planning and discipline.' });
+  if (d.advisory === 'regular' && d.follow === 'always') flags.push({ type:'positive', icon:'✅', area:'Advisory engagement', title:'Consistent advisory follow-through', body:'Farmer regularly receives advice and consistently follows recommendations — the single strongest predictor of good outcomes.' });
+  if (d.yield === 'good' || d.yield === 'excellent') flags.push({ type:'positive', icon:'✅', area:'Production & yield', title:'Above-average yield reported', body:'Self-reported yield is above average for the region and crop type. Recommend extension worker verification for higher loan amounts.' });
+  if (d.coop === 'yes-active') flags.push({ type:'positive', icon:'✅', area:'Financial reliability', title:'Active cooperative member', body:'Cooperative membership provides social accountability and potential for group guarantee — reduces lender risk.' });
+  if (d.prevLoan === 'yes-repaid') flags.push({ type:'positive', icon:'✅', area:'Financial reliability', title:'Previous loan fully repaid', body:'Farmer has a track record of repaying agricultural credit. This is a meaningful positive signal.' });
+  if (d.inputs.includes('certified-seed') && d.inputs.includes('fertiliser')) flags.push({ type:'positive', icon:'✅', area:'Agronomic practice', title:'Good input package', body:'Farmer used certified seed and fertiliser — evidence of investment in production quality.' });
+  if (d.seasons >= 5) flags.push({ type:'positive', icon:'✅', area:'Experience', title: d.seasons + ' seasons of experience', body: 'Farmer has significant experience on this land, reducing seasonal risk.' });
 
   // Warnings
-  if (d.advisory === 'sometimes' || d.advisory === 'rarely') flags.push({ type:'warning', icon:'⚠️', title:'Inconsistent advisory access', body:'Farmer does not consistently receive extension support. Linking this loan to advisory services is recommended.' });
-  if (d.loss === 'moderate') flags.push({ type:'warning', icon:'⚠️', title:'Moderate crop loss in recent seasons', body:'Farmer reported 20–50% crop loss in the last two seasons. Assess whether this was weather-related or practice-related.' });
-  if (d.inputs.length === 0 || d.inputs.includes('none')) flags.push({ type:'warning', icon:'⚠️', title:'Minimal input use reported', body:'Farmer reported using no formal inputs last season. This may reflect cost constraints rather than poor practice.' });
-  if (d.timing === 'late') flags.push({ type:'warning', icon:'⚠️', title:'Late planting last season', body:'Farmer planted late last season. Verify whether this was due to lack of inputs (which financing could solve) or other factors.' });
+  if (d.advisory === 'sometimes' || d.advisory === 'rarely') flags.push({ type:'warning', icon:'⚠️', area:'Advisory engagement', title:'Inconsistent advisory access', body:'Farmer does not consistently receive extension support. Linking this loan to advisory services is recommended.' });
+  if (d.loss === 'moderate') flags.push({ type:'warning', icon:'⚠️', area:'Production & yield', title:'Moderate crop loss in recent seasons', body:'Farmer reported 20–50% crop loss in the last two seasons. Assess whether this was weather-related or practice-related.' });
+  if (d.inputs.length === 0 || d.inputs.includes('none')) flags.push({ type:'warning', icon:'⚠️', area:'Agronomic practice', title:'Minimal input use reported', body:'Farmer reported using no formal inputs last season. This may reflect cost constraints rather than poor practice.' });
+  if (d.timing === 'late') flags.push({ type:'warning', icon:'⚠️', area:'Agronomic practice', title:'Late planting last season', body:'Farmer planted late last season. Verify whether this was due to lack of inputs (which financing could solve) or other factors.' });
 
   // Risks
-  if (d.prevLoan === 'yes-default') flags.push({ type:'risk', icon:'🔴', title:'Previous loan difficulty', body:'Farmer reported difficulties repaying a prior agricultural loan. Requires direct discussion before advancing this application.' });
-  if (d.loss === 'major') flags.push({ type:'risk', icon:'🔴', title:'Major crop loss reported', body:'Farmer reported losing more than 50% of crop. Investigate cause and assess whether risk is seasonal, structural, or manageable.' });
-  if (d.advisory === 'never') flags.push({ type:'risk', icon:'🔴', title:'No advisory engagement', body:'Farmer has never received agronomic advice. Linking any loan to mandatory extension support is strongly recommended.' });
-  if (d.yield === 'poor' && d.loss === 'major') flags.push({ type:'risk', icon:'🔴', title:'Combined yield and loss signals', body:'Both low yield and high crop loss are reported together. This combination warrants field verification before proceeding.' });
+  if (d.prevLoan === 'yes-default') flags.push({ type:'risk', icon:'🔴', area:'Financial reliability', title:'Previous loan difficulty', body:'Farmer reported difficulties repaying a prior agricultural loan. Requires direct discussion before advancing this application.' });
+  if (d.loss === 'major') flags.push({ type:'risk', icon:'🔴', area:'Production & yield', title:'Major crop loss reported', body:'Farmer reported losing more than 50% of crop. Investigate cause and assess whether risk is seasonal, structural, or manageable.' });
+  if (d.advisory === 'never') flags.push({ type:'risk', icon:'🔴', area:'Advisory engagement', title:'No advisory engagement', body:'Farmer has never received agronomic advice. Linking any loan to mandatory extension support is strongly recommended.' });
+  if (d.yield === 'poor' && d.loss === 'major') flags.push({ type:'risk', icon:'🔴', area:'Production & yield', title:'Combined yield and loss signals', body:'Both low yield and high crop loss are reported together. This combination warrants field verification before proceeding.' });
 
   // Low confidence
-  if (d.seasons <= 1) flags.push({ type:'warning', icon:'⚠️', title:'Limited farm history', body:'Farmer has only one season on record. Score confidence is lower than usual. Field visit recommended.' });
+  if (d.seasons <= 1) flags.push({ type:'warning', icon:'⚠️', area:'Experience', title:'Limited farm history', body:'Farmer has only one season on record. Score confidence is lower than usual. Field visit recommended.' });
 
   return flags.slice(0, 6); // cap at 6 flags
 }
@@ -1049,7 +1048,7 @@ function renderResult(d) {
 
   // Flags
   document.getElementById('flags-container').innerHTML = flags.map(f =>
-    `<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><b>${f.title}</b>${f.body}</div></div>`
+    `<div class="flag ${f.type}"><div class="flag-icon">${f.icon}</div><div class="flag-text"><span class="flag-area">${f.area}</span><b>${f.title}</b>${f.body}</div></div>`
   ).join('');
 
   document.getElementById('summary-text').innerHTML = buildSummary(d, gradeInfo);
