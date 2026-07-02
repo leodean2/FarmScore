@@ -7,6 +7,7 @@ const { requireAuth, requireRole } = require('./middleware/auth');
 const authRouter    = require('./routes/auth');
 const scoreRouter   = require('./routes/score');
 const farmersRouter = require('./routes/farmers');
+const masumiRouter  = require('./routes/masumi');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth',    authRouter);
 app.use('/api/score',   requireAuth, scoreRouter);
 app.use('/api/farmers', requireAuth, farmersRouter);
+app.use('/api/masumi',  masumiRouter);
 
 // 404 handler
 app.use((req, res) => {
