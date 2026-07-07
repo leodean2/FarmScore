@@ -1,11 +1,9 @@
 const express  = require('express');
 const cors     = require('cors');
-const session  = require('express-session');
-const passport = require('passport');
+const passport = require('./middleware/passport');
 require('dotenv').config();
 
 const { verifyConnection } = require('./db/neo4j');
-const { requireAuth, requireRole } = require('./middleware/auth');
 const authRouter    = require('./routes/auth');
 const scoreRouter   = require('./routes/score');
 const farmersRouter = require('./routes/farmers');
@@ -15,11 +13,12 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
+app.use(cors({
+  origin:      process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(express.json());
-app.use(session({ secret: process.env.JWT_SECRET, resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
-app.use(passport.session());
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -28,18 +27,25 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     status:  'running',
     endpoints: {
+      'POST /api/auth/register':         'Register (email/password)',
+      'POST /api/auth/login':            'Login (email/password)',
+      'GET  /api/auth/google':           'Start Google OAuth',
+      'GET  /api/auth/google/callback':  'Google OAuth callback',
+      'GET  /api/auth/me':               'Get current user',
       'POST /api/score':                 'Score a farmer (no save)',
       'GET  /api/farmers':               'Get all farmers',
-      'GET  /api/farmers/:id':           'Get one farmer',
       'POST /api/farmers':               'Score + save farmer to Neo4j',
       'PATCH /api/farmers/:id/decision': 'Record loan decision',
+      'GET  /api/masumi/availability':   'Masumi agent availability',
+      'POST /api/masumi/start-job':      'Start Masumi scoring job',
+      'GET  /api/masumi/get-job-status': 'Check Masumi job status',
     }
   });
 });
 
 app.use('/api/auth',    authRouter);
-app.use('/api/score',   requireAuth, scoreRouter);
-app.use('/api/farmers', requireAuth, farmersRouter);
+app.use('/api/score',   scoreRouter);
+app.use('/api/farmers', farmersRouter);
 app.use('/api/masumi',  masumiRouter);
 
 // 404 handler
@@ -55,16 +61,10 @@ app.use((err, req, res, next) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 async function start() {
-  try {
-    await verifyConnection();
-    app.listen(PORT, () => {
-      console.log(`🌱 FarmScore API running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-  } catch (err) {
-    console.error('❌ Failed to start server:', err.message);
-    process.exit(1);
-  }
+  await verifyConnection();
+  app.listen(PORT, () => {
+    console.log(`🌱 FarmScore API running on http://localhost:${PORT}`);
+  });
 }
 
 start();
