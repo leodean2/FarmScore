@@ -132,7 +132,7 @@ export default function Login() {
             <h2 className="text-2xl font-extrabold text-white mb-1">Welcome back</h2>
             <p className="text-gray-400 text-sm mb-6">Sign in to your workstation.</p>
 
-            <button type="button" onClick={() => alert('Google OAuth requires backend OAuth flow. Use email and password for the demo.')}
+            <button type="button" onClick={() => { window.location.href = '/api/auth/google' }}
               className="w-full flex items-center justify-center gap-3 py-3 bg-surface border border-border rounded-xl text-sm font-semibold text-white hover:bg-border transition-colors mb-5">
               <GoogleIcon />
               Continue with Google
@@ -161,7 +161,7 @@ export default function Login() {
             <h2 className="text-2xl font-extrabold text-white mb-1">Create your account</h2>
             <p className="text-gray-400 text-sm mb-5">Join FarmScore in under a minute.</p>
 
-            <button type="button" onClick={() => alert('Google OAuth requires backend OAuth flow. Use email and password for the demo.')}
+            <button type="button" onClick={() => { window.location.href = '/api/auth/google' }}
               className="w-full flex items-center justify-center gap-3 py-3 bg-surface border border-border rounded-xl text-sm font-semibold text-white hover:bg-border transition-colors mb-3">
               <GoogleIcon />
               Sign up with Google
