@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import LenderLayout   from './components/layout/LenderLayout'
 
@@ -10,10 +11,36 @@ import AllFarmers from './pages/lender/AllFarmers'
 import Pending    from './pages/lender/Pending'
 import Approved   from './pages/lender/Approved'
 
+// Reads token from query params after Google OAuth redirect
+function OAuthHandler() {
+  const { login } = useAuth()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const token  = params.get('token')
+    const role   = params.get('role')
+    const id     = params.get('id')
+    const name   = params.get('name')
+    const email  = params.get('email')
+
+    if (token && role) {
+      login(token, { id, name, email, role })
+      // Clean URL then redirect
+      window.history.replaceState({}, '', location.pathname)
+      navigate(role === 'admin' ? '/lender' : '/farmer', { replace: true })
+    }
+  }, [])
+
+  return null
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <OAuthHandler />
         <Routes>
           {/* Public */}
           <Route path="/login" element={<Login />} />
