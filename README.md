@@ -10,7 +10,7 @@ Built for the **Kenya AI Challenge · AgriFin Track · Shambapro Brief**.
 
 ## 🔗 Live Demo
 
-👉 **[farmscore demo](https://your-username.github.io/farmscore)**
+👉 **[farmscore demo](https://farm-score-fm2h7lmv1-leo-murayas-projects-10864cbd.vercel.app)**
 
 > Replace the link above with your actual GitHub Pages URL after deploying.
 
