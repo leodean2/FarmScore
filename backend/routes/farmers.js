@@ -52,7 +52,10 @@ router.get('/', async (req, res) => {
         // Loan history
         prevLoan:  l.history,
         purpose:   l.purpose,
-        notes:     f.notes,
+        notes:       f.notes,
+        decision:    f.decision    || null,
+        officerNote: f.officerNote || '',
+        decidedAt:   f.decidedAt   || null,
       };
     });
 
