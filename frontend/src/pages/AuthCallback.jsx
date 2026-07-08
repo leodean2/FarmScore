@@ -16,7 +16,8 @@ export default function AuthCallback() {
     try {
       login(token, JSON.parse(decodeURIComponent(user)))
       const parsed = JSON.parse(decodeURIComponent(user))
-      navigate(parsed.role === 'admin' ? '/lender' : '/farmer', { replace: true })
+      const dest = parsed.role === 'admin' || parsed.role === 'lender' ? '/lender' : '/farmer'
+      navigate(dest, { replace: true })
     } catch {
       navigate('/login?error=google', { replace: true })
     }

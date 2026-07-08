@@ -101,9 +101,11 @@ router.get('/google/callback',
     try {
       const user   = req.user
       const token  = generateToken(user)
-      const params = new URLSearchParams({ token, id: user.id, name: user.name, email: user.email, role: user.role })
-      const dest   = user.role === 'admin' ? '/admin' : user.role === 'lender' ? '/lender' : '/farmer'
-      res.redirect(`${process.env.FRONTEND_URL}${dest}?${params.toString()}`)
+      const params = new URLSearchParams({
+        token,
+        user: encodeURIComponent(JSON.stringify({ id: user.id, name: user.name, email: user.email, role: user.role }))
+      })
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?${params.toString()}`)
     } catch (err) {
       res.redirect(`${process.env.FRONTEND_URL}/login?error=callback_failed`)
     }
