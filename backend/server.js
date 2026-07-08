@@ -3,11 +3,13 @@ const cors     = require('cors');
 const passport = require('./middleware/passport');
 require('dotenv').config();
 
+const { requireAuth, requireRole } = require('./middleware/auth');
 const { verifyConnection } = require('./db/neo4j');
 const authRouter    = require('./routes/auth');
 const scoreRouter   = require('./routes/score');
 const farmersRouter = require('./routes/farmers');
 const masumiRouter  = require('./routes/masumi');
+const adminRouter   = require('./routes/admin');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -44,9 +46,10 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth',    authRouter);
-app.use('/api/score',   scoreRouter);
-app.use('/api/farmers', farmersRouter);
+app.use('/api/score',   requireAuth, scoreRouter);
+app.use('/api/farmers', requireAuth, farmersRouter);
 app.use('/api/masumi',  masumiRouter);
+app.use('/api/admin',   requireAuth, requireRole('admin'), adminRouter);
 
 // 404 handler
 app.use((req, res) => {

@@ -10,14 +10,18 @@ const { generateNarrative } = require('../services/narrative');
  */
 router.get('/', async (req, res) => {
   try {
+    const { role, id: userId } = req.user || {}
+    const isPrivileged = role === 'admin' || role === 'lender'
+
     const records = await runQuery(`
       MATCH (f:Farmer)
+      WHERE $isPrivileged OR f.userId = $userId
       OPTIONAL MATCH (f)-[:HAS_SEASON]->(s:Season)
       OPTIONAL MATCH (f)-[:ENGAGED_WITH]->(a:Advisory)
       OPTIONAL MATCH (f)-[:APPLIED_FOR]->(l:Loan)
       RETURN f, s, a, l
       ORDER BY f.submittedAt DESC
-    `);
+    `, { isPrivileged, userId: userId || '' });
 
     const farmers = records.map(record => {
       const f = record.get('f').properties;
@@ -169,8 +173,9 @@ router.post('/', async (req, res) => {
       console.warn('Narrative generation failed (non-fatal):', narrativeErr.message);
     }
 
-    const farmerId = `farmer_${Date.now()}`;
+    const farmerId   = `farmer_${Date.now()}`;
     const submittedAt = new Date().toISOString();
+    const userId      = req.user?.id || '';
 
     // Save to Neo4j graph
     await runQuery(`
@@ -182,6 +187,7 @@ router.post('/', async (req, res) => {
           f.size        = $size,
           f.seasons     = $seasons,
           f.notes       = $notes,
+          f.userId      = $userId,
           f.scoreTotal  = $total,
           f.scoreAgr    = $agrScore,
           f.scoreProd   = $prodScore,
@@ -223,6 +229,7 @@ router.post('/', async (req, res) => {
       RETURN f
     `, {
       farmerId,
+      userId,
       name:       data.name,
       county:     data.county,
       crop:       data.crop,
