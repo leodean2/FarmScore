@@ -23,4 +23,13 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { requireAuth, requireRole };
+function requireAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden — admin role required' });
+    }
+    next();
+  });
+}
+
+

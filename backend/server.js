@@ -49,7 +49,7 @@ app.use('/api/auth',    authRouter);
 app.use('/api/score',   requireAuth, scoreRouter);
 app.use('/api/farmers', requireAuth, farmersRouter);
 app.use('/api/masumi',  masumiRouter);
-app.use('/api/admin',   requireAuth, requireRole('admin'), adminRouter);
+app.use('/api/admin',   requireAuth, adminRouter);
 
 // 404 handler
 app.use((req, res) => {
