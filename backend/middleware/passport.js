@@ -24,49 +24,32 @@ passport.use(new GoogleStrategy(
         { email }
       )
 
-      let user
-
       if (existing.length > 0) {
-        // Update existing user with Google ID if not set
+        // Existing user — update Google ID and return
         await runQuery(
           `MATCH (u:User { email: $email })
-           SET u.googleId = $googleId, u.avatar = $avatar
-           RETURN u`,
+           SET u.googleId = $googleId, u.avatar = $avatar`,
           { email, googleId, avatar: avatar || '' }
         )
-        user = existing[0].get('u').properties
+        const user = existing[0].get('u').properties
+        return done(null, { ...user, isNewUser: false })
       } else {
-        // Create new user — default role is farmer
-        const records = await runQuery(
-          `CREATE (u:User {
-            id:        $id,
-            name:      $name,
-            email:     $email,
-            googleId:  $googleId,
-            avatar:    $avatar,
-            role:      'farmer',
-            createdAt: $createdAt
-          }) RETURN u`,
-          {
-            id:        `user_${Date.now()}`,
-            name,
-            email,
-            googleId,
-            avatar:    avatar || '',
-            createdAt: new Date().toISOString(),
-          }
-        )
-        user = records[0].get('u').properties
+        // New user — don't create account yet, send to complete-profile
+        return done(null, {
+          isNewUser: true,
+          googleId,
+          name,
+          email,
+          avatar: avatar || '',
+        })
       }
-
-      return done(null, user)
     } catch (err) {
       return done(err, null)
     }
   }
 ))
 
-passport.serializeUser((user, done)   => done(null, user.id))
-passport.deserializeUser((id, done)   => done(null, id))
+passport.serializeUser((user, done) => done(null, user.id || user.googleId))
+passport.deserializeUser((id, done) => done(null, id))
 
 module.exports = passport

@@ -99,18 +99,102 @@ router.get('/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_failed` }),
   (req, res) => {
     try {
-      const user   = req.user
+      const user = req.user
+
+      if (user.isNewUser) {
+        // New Google user — redirect to complete-profile with their details
+        // No account created yet — they must choose a role first
+        const params = new URLSearchParams({
+          googleId: user.googleId,
+          name:     user.name,
+          email:    user.email,
+          avatar:   user.avatar || '',
+        })
+        return res.redirect(`${process.env.FRONTEND_URL}/complete-profile?${params.toString()}`)
+      }
+
+      // Existing user — generate token and redirect
       const token  = generateToken(user)
       const params = new URLSearchParams({
-        token,
-        user: encodeURIComponent(JSON.stringify({ id: user.id, name: user.name, email: user.email, role: user.role }))
+        token, id: user.id, name: user.name, email: user.email, role: user.role
       })
-      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?${params.toString()}`)
+      const dest = user.role === 'admin' ? '/admin' : user.role === 'lender' ? '/lender' : '/farmer'
+      res.redirect(`${process.env.FRONTEND_URL}${dest}?${params.toString()}`)
     } catch (err) {
       res.redirect(`${process.env.FRONTEND_URL}/login?error=callback_failed`)
     }
   }
 )
+
+// POST /api/auth/complete-google-signup
+// Called from /complete-profile page after user selects their role
+router.post('/complete-google-signup', async (req, res) => {
+  try {
+    const { googleId, name, email, avatar, role, organization, adminSecret } = req.body
+
+    if (!googleId || !email || !role) {
+      return res.status(400).json({ success: false, error: 'Missing required fields.' })
+    }
+
+    // Validate secrets for protected roles
+    if (role === 'admin') {
+      if (!adminSecret || adminSecret !== process.env.ADMIN_SECRET)
+        return res.status(403).json({ success: false, error: 'Invalid admin secret key.' })
+    }
+    if (role === 'lender') {
+      if (!adminSecret || adminSecret !== process.env.LENDER_SECRET)
+        return res.status(403).json({ success: false, error: 'Invalid lender secret key. Contact your administrator.' })
+    }
+
+    // Check if account already exists (race condition guard)
+    const existing = await runQuery(`MATCH (u:User { email: $email }) RETURN u`, { email })
+    if (existing.length > 0) {
+      // Already exists — just log them in
+      const user  = existing[0].get('u').properties
+      const token = generateToken(user)
+      return res.json({
+        success: true, token,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      })
+    }
+
+    // Create the account now with the chosen role
+    const records = await runQuery(
+      `CREATE (u:User {
+        id:           $id,
+        name:         $name,
+        email:        $email,
+        googleId:     $googleId,
+        avatar:       $avatar,
+        role:         $role,
+        organization: $organization,
+        status:       'active',
+        createdAt:    $createdAt
+      }) RETURN u`,
+      {
+        id:           `user_${Date.now()}`,
+        name,
+        email,
+        googleId,
+        avatar:       avatar || '',
+        role,
+        organization: organization || '',
+        createdAt:    new Date().toISOString(),
+      }
+    )
+
+    const user  = records[0].get('u').properties
+    const token = generateToken(user)
+
+    return res.status(201).json({
+      success: true, token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+    })
+  } catch (err) {
+    console.error('Complete Google signup error:', err)
+    return res.status(500).json({ success: false, error: 'Signup failed.' })
+  }
+})
 
 // GET /api/auth/me
 router.get('/me', (req, res) => {
