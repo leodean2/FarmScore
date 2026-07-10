@@ -1,35 +1,45 @@
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const jwt = require('jsonwebtoken')
 
+// ── Verify JWT token ──────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorised — no token' });
-  }
   try {
-    req.user = jwt.verify(header.split(' ')[1], process.env.JWT_SECRET);
-    next();
+    const token = req.headers.authorization?.split(' ')[1]
+    if (!token) return res.status(401).json({ success: false, error: 'Authentication required.' })
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = decoded
+    next()
   } catch {
-    return res.status(401).json({ error: 'Unauthorised — invalid token' });
+    return res.status(401).json({ success: false, error: 'Invalid or expired token.' })
   }
 }
 
-function requireRole(...roles) {
-  return (req, res, next) => {
-    if (!roles.includes(req.user?.role)) {
-      return res.status(403).json({ error: `Forbidden — requires role: ${roles.join(' or ')}` });
+// ── Role guards ───────────────────────────────────────────────────────────────
+function requireFarmer(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user.role !== 'farmer') {
+      return res.status(403).json({ success: false, error: 'Farmer access required.' })
     }
-    next();
-  };
+    next()
+  })
+}
+
+function requireLender(req, res, next) {
+  requireAuth(req, res, () => {
+    if (req.user.role !== 'lender' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Lender access required.' })
+    }
+    next()
+  })
 }
 
 function requireAdmin(req, res, next) {
   requireAuth(req, res, () => {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Forbidden — admin role required' });
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required.' })
     }
-    next();
-  });
+    next()
+  })
 }
 
-module.exports = { requireAuth, requireRole, requireAdmin };
+module.exports = { requireAuth, requireFarmer, requireLender, requireAdmin }

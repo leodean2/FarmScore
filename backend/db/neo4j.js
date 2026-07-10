@@ -21,8 +21,14 @@ async function verifyConnection() {
 async function runQuery(cypher, params = {}) {
   const session = driver.session();
   try {
+    console.log('📝 Running query with params:', Object.keys(params))
     const result = await session.run(cypher, params);
+    console.log('✅ Query successful, records:', result.records.length)
     return result.records;
+  } catch (err) {
+    console.error('❌ Query failed:', err.message)
+    console.error('Cypher:', cypher)
+    throw err;
   } finally {
     await session.close();
   }

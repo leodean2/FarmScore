@@ -6,14 +6,26 @@ export default function ProtectedRoute({ children, role }) {
 
   if (!ready) return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-moss-lt border-t-moss rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-[#1E2D45] border-t-moss rounded-full animate-spin" />
     </div>
   )
 
   if (!token || !user) return <Navigate to="/login" replace />
 
-  if (role && user.role !== role) {
-    return <Navigate to={user.role === 'admin' ? '/lender' : '/farmer'} replace />
+  // Role-based access
+  if (role) {
+    // Admin can access everything
+    if (user.role === 'admin') return children
+
+    // Lender can access lender routes
+    if (role === 'lender' && user.role !== 'lender') {
+      return <Navigate to={`/${user.role}`} replace />
+    }
+
+    // Farmer can only access farmer routes
+    if (role === 'farmer' && user.role !== 'farmer') {
+      return <Navigate to={`/${user.role}`} replace />
+    }
   }
 
   return children
