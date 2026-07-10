@@ -34,6 +34,11 @@ export default function CompleteProfile() {
     e.preventDefault()
     setError('')
 
+    if (role === 'lender' && !org.trim()) {
+      setError('Organization is required for lender and SACCO accounts.')
+      return
+    }
+
     if ((role === 'lender' || role === 'admin') && !secret) {
       setError(`Secret key is required for ${role === 'admin' ? 'Admin' : 'Lender / SACCO'} accounts.`)
       return
@@ -183,7 +188,7 @@ export default function CompleteProfile() {
             {(role === 'lender' || role === 'admin') && (
               <div>
                 <label className="text-sm text-gray-300 font-semibold block mb-1.5">
-                  Organization {role === 'lender' ? '(optional)' : ''}
+                  Organization {role === 'lender' ? '(required)' : ''}
                 </label>
                 <input
                   type="text"
