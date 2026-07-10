@@ -75,12 +75,12 @@ export default function AllFarmers() {
   const purposeLabel = { inputs:'Buy inputs', equipment:'Equipment', irrigation:'Irrigation', storage:'Storage', other:'Other' }
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-extrabold text-forest mb-0.5">All Farmers</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-extrabold text-forest mb-0.5">All Farmers</h1>
       <p className="text-sm text-gray-400 mb-6">Complete list of all farmer assessments in the system.</p>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard label="Total"          value={farmers.length}                                         sub="all farmers" />
         <StatCard label="Approved"       value={farmers.filter(f=>f.decision==='approved').length}      sub="decisions made"       color="green" />
         <StatCard label="Pending/Review" value={farmers.filter(f=>!f.decision||f.decision==='review').length} sub="awaiting decision" color="gold" />
@@ -123,7 +123,7 @@ export default function AllFarmers() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
         {loading ? (
           <div className="p-12 text-center text-gray-400">
             <div className="w-8 h-8 border-2 border-moss-lt border-t-moss rounded-full animate-spin mx-auto mb-3" />

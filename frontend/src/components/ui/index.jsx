@@ -69,9 +69,9 @@ export function StatCard({ label, value, sub, color = 'forest' }) {
     blue:   'text-blue-500',
   }
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 flex flex-col gap-1">
+    <div className="bg-white rounded-xl shadow-sm p-4 md:p-5 flex flex-col gap-1">
       <span className="text-xs font-bold text-gray-400 uppercase tracking-wide">{label}</span>
-      <span className={`text-3xl font-extrabold leading-none ${colors[color]}`}>{value}</span>
+      <span className={`text-2xl md:text-3xl font-extrabold leading-none ${colors[color]}`}>{value}</span>
       {sub && <span className="text-xs text-gray-400">{sub}</span>}
     </div>
   )

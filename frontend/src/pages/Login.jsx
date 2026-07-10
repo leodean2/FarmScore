@@ -78,10 +78,10 @@ export default function Login() {
   const selectedRole = ROLES.find(r => r.val === role)
 
   return (
-    <div className="min-h-screen bg-bg flex">
+    <div className="min-h-screen bg-bg flex flex-col md:flex-row">
 
       {/* ── Left panel ── */}
-      <div className="flex-1 flex flex-col justify-between p-10 relative overflow-hidden">
+      <div className="flex-1 flex flex-col justify-between p-8 md:p-10 relative overflow-hidden min-h-[220px] md:min-h-screen">
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: 'linear-gradient(rgba(59,130,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.04) 1px,transparent 1px)',
           backgroundSize: '48px 48px',
@@ -115,10 +115,10 @@ export default function Login() {
       </div>
 
       {/* Divider */}
-      <div className="w-px bg-[#1E2D45] self-stretch" />
+      <div className="hidden md:block w-px bg-[#1E2D45] self-stretch" />
 
       {/* ── Right panel ── */}
-      <div className="w-[480px] flex-shrink-0 flex flex-col justify-center px-12 py-10 overflow-y-auto">
+      <div className="w-full md:w-[480px] flex-shrink-0 flex flex-col justify-center px-6 md:px-12 py-8 md:py-10 overflow-y-auto">
 
         {/* Tab toggle */}
         <div className="flex bg-[#0E1525] border border-[#1E2D45] rounded-xl p-1 mb-7">

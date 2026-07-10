@@ -91,12 +91,12 @@ export default function Pending() {
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-extrabold text-forest mb-0.5">Pending Review</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-extrabold text-forest mb-0.5">Pending Review</h1>
       <p className="text-sm text-gray-400 mb-6">Farmers awaiting a decision or flagged for review. Sorted by urgency.</p>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
         <StatCard label="High urgency"      value={farmers.filter(f=>urgency(f)==='high').length}                    sub="risk flags present"   color="red" />
         <StatCard label="Flagged for review" value={farmers.filter(f=>f.decision==='review').length}                 sub="officer flagged"       color="gold" />
         <StatCard label="Undecided"          value={farmers.filter(f=>!f.decision||f.decision==='none').length}      sub="no decision yet" />
@@ -132,7 +132,7 @@ export default function Pending() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
         {loading ? (
           <div className="p-12 text-center text-gray-400">
             <div className="w-8 h-8 border-2 border-moss-lt border-t-moss rounded-full animate-spin mx-auto mb-3" />
