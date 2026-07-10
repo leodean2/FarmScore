@@ -1,6 +1,6 @@
 const express  = require('express')
 const router   = express.Router()
-const bcrypt   = require('bcryptjs')
+const { hashPassword, verifyPassword } = require('../utils/password')
 const jwt      = require('jsonwebtoken')
 const passport = require('../middleware/passport')
 const { runQuery } = require('../db/neo4j')
@@ -33,11 +33,10 @@ router.post('/register', async (req, res) => {
         return res.status(403).json({ success: false, error: 'Invalid lender secret key. Contact your administrator.' })
     }
 
-    const existing = await runQuery(`MATCH (u:User { email: $email }) RETURN u`, { email })
+    const hashedPassword = hashPassword(password)
+    const existing = await runQuery(`MATCH (u:User { email: $email }) RETURN u LIMIT 1`, { email }, { accessMode: 'READ' })
     if (existing.length > 0)
       return res.status(409).json({ success: false, error: 'An account with this email already exists.' })
-
-    const hashedPassword = await bcrypt.hash(password, 10)
     const records = await runQuery(
       `CREATE (u:User {
         id: $id, name: $name, email: $email, password: $password,
@@ -68,7 +67,7 @@ router.post('/login', async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ success: false, error: 'Email and password are required.' })
 
-    const records = await runQuery(`MATCH (u:User { email: $email }) RETURN u`, { email })
+    const records = await runQuery(`MATCH (u:User { email: $email }) RETURN u LIMIT 1`, { email }, { accessMode: 'READ' })
     if (!records.length)
       return res.status(401).json({ success: false, error: 'Invalid email or password.' })
 
@@ -80,9 +79,18 @@ router.post('/login', async (req, res) => {
     if (!user.password)
       return res.status(401).json({ success: false, error: 'This account uses Google sign-in. Please continue with Google.' })
 
-    const valid = await bcrypt.compare(password, user.password)
-    if (!valid)
-      return res.status(401).json({ success: false, error: 'Invalid email or password.' })
+    const { valid, legacy } = await verifyPassword(password, user.password)
+    if (!valid) return res.status(401).json({ success: false, error: 'Invalid email or password.' })
+
+    // If the account used a legacy bcrypt hash, migrate to scrypt on successful login
+    if (legacy === 'bcrypt') {
+      try {
+        const newHash = hashPassword(password)
+        runQuery(`MATCH (u:User { id: $id }) SET u.password = $password`, { id: user.id, password: newHash })
+      } catch (e) {
+        console.warn('Password migration failed:', e.message)
+      }
+    }
 
     const token = generateToken(user)
     return res.json({

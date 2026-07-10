@@ -2,6 +2,7 @@ const express = require('express')
 const router  = express.Router()
 const { runQuery } = require('../db/neo4j')
 const { requireAdmin } = require('../middleware/auth')
+const cache = require('../utils/cache')
 
 // All admin routes require admin role
 router.use(requireAdmin)
@@ -9,6 +10,9 @@ router.use(requireAdmin)
 // GET /api/admin/stats
 router.get('/stats', async (req, res) => {
   try {
+    const cached = await cache.get('admin:stats')
+    if (cached) return res.json(cached)
+
     const [users, farmers, lenders, decisions] = await Promise.all([
       runQuery(`MATCH (u:User) RETURN count(u) as count`),
       runQuery(`MATCH (u:User { role: 'farmer' }) RETURN count(u) as count`),
@@ -16,7 +20,7 @@ router.get('/stats', async (req, res) => {
       runQuery(`MATCH (f:Farmer) WHERE f.decision IS NOT NULL RETURN count(f) as count`),
     ])
 
-    return res.json({
+    const payload = {
       success: true,
       stats: {
         totalUsers:     users[0]?.get('count').toNumber()     || 0,
@@ -24,7 +28,9 @@ router.get('/stats', async (req, res) => {
         totalLenders:   lenders[0]?.get('count').toNumber()   || 0,
         totalDecisions: decisions[0]?.get('count').toNumber() || 0,
       }
-    })
+    }
+    await cache.set('admin:stats', payload, 120_000)
+    return res.json(payload)
   } catch (err) {
     console.error('Admin stats error:', err)
     return res.status(500).json({ success: false, error: err.message })
@@ -35,6 +41,10 @@ router.get('/stats', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const { role } = req.query
+    const cacheKey = `admin:users:${role || 'all'}`
+    const cached = await cache.get(cacheKey)
+    if (cached) return res.json(cached)
+
     const cypher   = role
       ? `MATCH (u:User { role: $role }) RETURN u ORDER BY u.createdAt DESC`
       : `MATCH (u:User) RETURN u ORDER BY u.createdAt DESC`
@@ -54,7 +64,9 @@ router.get('/users', async (req, res) => {
       }
     })
 
-    return res.json({ success: true, count: users.length, users })
+    const payload = { success: true, count: users.length, users }
+    await cache.set(cacheKey, payload, 60_000)
+    return res.json(payload)
   } catch (err) {
     console.error('Admin users error:', err)
     return res.status(500).json({ success: false, error: err.message })
@@ -78,6 +90,8 @@ router.patch('/users/:id/role', async (req, res) => {
       { id: req.params.id, role, updatedAt: new Date().toISOString(), updatedBy: req.user.id }
     )
     await logAudit(req.user.id, 'ROLE_CHANGE', `Changed user ${req.params.id} role to ${role}`)
+    await cache.invalidatePrefix('admin:users')
+    await cache.del('admin:stats')
 
     return res.json({ success: true, message: `User role updated to ${role}` })
   } catch (err) {
@@ -103,6 +117,7 @@ router.patch('/users/:id/status', async (req, res) => {
       { id: req.params.id, status, updatedAt: new Date().toISOString() }
     )
     await logAudit(req.user.id, 'STATUS_CHANGE', `${status === 'suspended' ? 'Suspended' : 'Activated'} user ${req.params.id}`)
+    await cache.invalidatePrefix('admin:users')
 
     return res.json({ success: true, message: `User ${status === 'suspended' ? 'suspended' : 'activated'}` })
   } catch (err) {
@@ -119,6 +134,8 @@ router.delete('/users/:id', async (req, res) => {
 
     await runQuery(`MATCH (u:User { id: $id }) DETACH DELETE u`, { id: req.params.id })
     await logAudit(req.user.id, 'USER_DELETED', `Deleted user ${req.params.id}`)
+    await cache.invalidatePrefix('admin:users')
+    await cache.del('admin:stats')
 
     return res.json({ success: true, message: 'User deleted.' })
   } catch (err) {
@@ -139,6 +156,11 @@ router.get('/audit', async (req, res) => {
     console.error('Audit log error:', err)
     return res.status(500).json({ success: false, error: err.message })
   }
+})
+
+// GET /api/admin/cache
+router.get('/cache', (req, res) => {
+  return res.json({ success: true, cache: cache.getMetrics() })
 })
 
 // GET /api/admin/settings

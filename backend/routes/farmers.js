@@ -3,6 +3,7 @@ const router = express.Router();
 const { runQuery } = require('../db/neo4j');
 const { calculateScore, gradeFromScore, buildFlags } = require('../services/scoring');
 const { generateNarrative } = require('../services/narrative');
+const cache = require('../utils/cache');
 
 /**
  * GET /api/farmers
@@ -12,16 +13,20 @@ router.get('/', async (req, res) => {
   try {
     const { role, id: userId } = req.user || {}
     const isPrivileged = role === 'admin' || role === 'lender'
+    const cacheKey = isPrivileged ? 'farmers:all' : `farmers:user:${userId}`
+
+    const cached = await cache.get(cacheKey)
+    if (cached) return res.json(cached)
 
     const records = await runQuery(`
       MATCH (f:Farmer)
-      WHERE $isPrivileged OR f.userId = $userId
+      ${isPrivileged ? '' : 'WHERE f.userId = $userId'}
       OPTIONAL MATCH (f)-[:HAS_SEASON]->(s:Season)
       OPTIONAL MATCH (f)-[:ENGAGED_WITH]->(a:Advisory)
       OPTIONAL MATCH (f)-[:APPLIED_FOR]->(l:Loan)
       RETURN f, s, a, l
       ORDER BY f.submittedAt DESC
-    `, { isPrivileged, userId: userId || '' });
+    `, { userId: userId || '' });
 
     const farmers = records.map(record => {
       const f = record.get('f').properties;
@@ -63,7 +68,9 @@ router.get('/', async (req, res) => {
       };
     });
 
-    return res.json({ success: true, count: farmers.length, farmers });
+    const payload = { success: true, count: farmers.length, farmers }
+    await cache.set(cacheKey, payload, isPrivileged ? 60_000 : 30_000)
+    return res.json(payload);
   } catch (err) {
     console.error('GET /farmers error:', err);
     return res.status(500).json({ error: 'Failed to fetch farmers', detail: err.message });
@@ -76,6 +83,10 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
+    const cacheKey = `farmers:id:${req.params.id}`
+    const cached = await cache.get(cacheKey)
+    if (cached) return res.json(cached)
+
     const records = await runQuery(`
       MATCH (f:Farmer { id: $id })
       OPTIONAL MATCH (f)-[:HAS_SEASON]->(s:Season)
@@ -107,9 +118,7 @@ router.get('/:id', async (req, res) => {
       seasons:  f.seasons,
     };
 
-    const flags = buildFlags(farmerData);
-
-    return res.json({
+    const payload = {
       success: true,
       farmer: {
         id:        f.id,
@@ -129,7 +138,10 @@ router.get('/:id', async (req, res) => {
         ...farmerData,
         flags,
       }
-    });
+    };
+
+    await cache.set(cacheKey, payload, 30_000);
+    return res.json(payload);
   } catch (err) {
     console.error('GET /farmers/:id error:', err);
     return res.status(500).json({ error: 'Failed to fetch farmer', detail: err.message });
@@ -174,61 +186,69 @@ router.post('/', async (req, res) => {
     }
 
     const farmerId   = `farmer_${Date.now()}`;
+    const seasonId   = `${farmerId}_season`;
+    const advisoryId = `${farmerId}_advisory`;
+    const loanId     = `${farmerId}_loan`;
     const submittedAt = new Date().toISOString();
     const userId      = req.user?.id || '';
 
     // Save to Neo4j graph
     await runQuery(`
-      // Create Farmer node
-      MERGE (f:Farmer { id: $farmerId })
-      SET f.name        = $name,
-          f.county      = $county,
-          f.crop        = $crop,
-          f.size        = $size,
-          f.seasons     = $seasons,
-          f.notes       = $notes,
-          f.userId      = $userId,
-          f.scoreTotal  = $total,
-          f.scoreAgr    = $agrScore,
-          f.scoreProd   = $prodScore,
-          f.scoreAdv    = $advScore,
-          f.scoreFin    = $finScore,
-          f.grade       = $grade,
-          f.submittedAt = $submittedAt
+      CREATE (f:Farmer {
+        id: $farmerId,
+        name: $name,
+        county: $county,
+        crop: $crop,
+        size: $size,
+        seasons: $seasons,
+        notes: $notes,
+        userId: $userId,
+        scoreTotal: $total,
+        scoreAgr: $agrScore,
+        scoreProd: $prodScore,
+        scoreAdv: $advScore,
+        scoreFin: $finScore,
+        grade: $grade,
+        submittedAt: $submittedAt
+      })
 
-      // Season node
-      MERGE (s:Season { id: $farmerId + '_season' })
-      SET s.timing     = $timing,
-          s.inputs     = $inputs,
-          s.fertRate   = $fertRate,
-          s.yieldLevel = $yieldLevel,
-          s.cropLoss   = $loss
-      MERGE (f)-[:HAS_SEASON]->(s)
+      CREATE (s:Season {
+        id: $seasonId,
+        timing: $timing,
+        inputs: $inputs,
+        fertRate: $fertRate,
+        yieldLevel: $yieldLevel,
+        cropLoss: $loss
+      })
+      CREATE (f)-[:HAS_SEASON]->(s)
 
-      // Advisory node
-      MERGE (a:Advisory { id: $farmerId + '_advisory' })
-      SET a.frequency     = $advisory,
-          a.followThrough = $follow,
-          a.cooperative   = $coop
-      MERGE (f)-[:ENGAGED_WITH]->(a)
+      CREATE (a:Advisory {
+        id: $advisoryId,
+        frequency: $advisory,
+        followThrough: $follow,
+        cooperative: $coop
+      })
+      CREATE (f)-[:ENGAGED_WITH]->(a)
 
-      // Loan node
-      MERGE (l:Loan { id: $farmerId + '_loan' })
-      SET l.history = $prevLoan,
-          l.purpose = $purpose
-      MERGE (f)-[:APPLIED_FOR]->(l)
+      CREATE (l:Loan {
+        id: $loanId,
+        history: $prevLoan,
+        purpose: $purpose
+      })
+      CREATE (f)-[:APPLIED_FOR]->(l)
 
-      // County node (shared across farmers in same county)
       MERGE (c:County { name: $county })
-      MERGE (f)-[:LOCATED_IN]->(c)
+      CREATE (f)-[:LOCATED_IN]->(c)
 
-      // Crop node (shared across farmers growing same crop)
       MERGE (cr:Crop { name: $crop })
-      MERGE (f)-[:GROWS]->(cr)
+      CREATE (f)-[:GROWS]->(cr)
 
       RETURN f
     `, {
       farmerId,
+      seasonId,
+      advisoryId,
+      loanId,
       userId,
       name:       data.name,
       county:     data.county,
@@ -250,6 +270,7 @@ router.post('/', async (req, res) => {
       purpose:    data.purpose || '',
     });
 
+    await cache.invalidatePrefix('farmers:')
     return res.status(201).json({
       success: true,
       message: 'Farmer scored and saved to graph',
@@ -269,6 +290,10 @@ router.post('/', async (req, res) => {
  */
 router.get('/:id/graph', async (req, res) => {
   try {
+    const cacheKey = `farmers:graph:${req.params.id}`
+    const cached = await cache.get(cacheKey)
+    if (cached) return res.json(cached)
+
     const records = await runQuery(`
       MATCH (f:Farmer { id: $id })
       OPTIONAL MATCH (f)-[:HAS_SEASON]->(s:Season)
@@ -276,13 +301,20 @@ router.get('/:id/graph', async (req, res) => {
       OPTIONAL MATCH (f)-[:APPLIED_FOR]->(l:Loan)
       OPTIONAL MATCH (f)-[:LOCATED_IN]->(c:County)
       OPTIONAL MATCH (f)-[:GROWS]->(cr:Crop)
-      OPTIONAL MATCH (peer:Farmer)-[:LOCATED_IN]->(c)
-      WHERE peer.id <> f.id
-      OPTIONAL MATCH (peer2:Farmer)-[:GROWS]->(cr)
-      WHERE peer2.id <> f.id
-      RETURN f, s, a, l, c, cr,
-             collect(DISTINCT peer)[..3]  AS countyPeers,
-             collect(DISTINCT peer2)[..3] AS cropPeers
+      WITH f, s, a, l, c, cr
+      CALL {
+        WITH c, f
+        OPTIONAL MATCH (peer:Farmer)-[:LOCATED_IN]->(c)
+        WHERE peer.id <> f.id
+        RETURN collect({ id: peer.id, name: peer.name, score: peer.scoreTotal })[0..3] AS countyPeers
+      }
+      CALL {
+        WITH cr, f
+        OPTIONAL MATCH (peer2:Farmer)-[:GROWS]->(cr)
+        WHERE peer2.id <> f.id
+        RETURN collect({ id: peer2.id, name: peer2.name, score: peer2.scoreTotal })[0..3] AS cropPeers
+      }
+      RETURN f, s, a, l, c, cr, countyPeers, cropPeers
     `, { id: req.params.id });
 
     if (!records.length) return res.status(404).json({ error: 'Farmer not found' });
@@ -340,7 +372,9 @@ router.get('/:id/graph', async (req, res) => {
       if (cr) edges.push({ source: p.id, target: `crop_${cr.name}`, label: 'GROWS' });
     });
 
-    return res.json({ success: true, nodes, edges });
+    const payload = { success: true, nodes, edges }
+    await cache.set(cacheKey, payload, 60_000)
+    return res.json(payload);
   } catch (err) {
     console.error('GET /farmers/:id/graph error:', err);
     return res.status(500).json({ error: 'Failed to fetch graph', detail: err.message });
@@ -372,6 +406,8 @@ router.patch('/:id/decision', async (req, res) => {
       decidedAt:   new Date().toISOString(),
     });
 
+    await cache.invalidatePrefix('farmers:')
+    await cache.del(`farmers:id:${req.params.id}`, `farmers:graph:${req.params.id}`)
     return res.json({ success: true, message: `Application marked as ${decision}` });
   } catch (err) {
     console.error('PATCH /farmers/:id/decision error:', err);
