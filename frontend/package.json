@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:analyze": "vite build --sourcemap && echo \"Analyze: open dist/stats.html in frontend/\"",
-    "postbuild": "node scripts/postbuild-compress.js",
+    "postbuild": "node scripts/postbuild-compress.cjs",
     "preview": "vite preview",
     "serve:static": "node scripts/serve-static.cjs"
   },
