@@ -17,7 +17,7 @@ passport.use(new GoogleStrategy(
 
       if (!email) return done(new Error('No email from Google'), null)
 
-      const existing = await runQuery(`MATCH (u:User { email: $email }) RETURN u`, { email })
+      const existing = await runQuery(`MATCH (u:User { email: $email }) RETURN u LIMIT 1`, { email }, { accessMode: 'READ' })
 
       if (existing.length > 0) {
         await runQuery(
