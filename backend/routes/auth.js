@@ -2,6 +2,7 @@ const express  = require('express')
 const router   = express.Router()
 const bcrypt   = require('bcryptjs')
 const jwt      = require('jsonwebtoken')
+const passport = require('../middleware/passport')
 const { runQuery } = require('../db/neo4j')
 
 function generateToken(user) {
@@ -76,6 +77,9 @@ router.post('/login', async (req, res) => {
     if (user.status === 'suspended')
       return res.status(403).json({ success: false, error: 'Your account has been suspended. Contact the administrator.' })
 
+    if (!user.password)
+      return res.status(401).json({ success: false, error: 'This account uses Google sign-in. Please continue with Google.' })
+
     const valid = await bcrypt.compare(password, user.password)
     if (!valid)
       return res.status(401).json({ success: false, error: 'Invalid email or password.' })
@@ -88,6 +92,81 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err)
     return res.status(500).json({ success: false, error: 'Login failed.' })
+  }
+})
+
+// GET /api/auth/google
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }))
+
+// GET /api/auth/google/callback
+router.get('/google/callback',
+  passport.authenticate('google', {
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL || 'https://farm-score.vercel.app'}/login?error=google_failed`,
+  }),
+  (req, res) => {
+    try {
+      const user      = req.user
+      const FRONTEND  = process.env.FRONTEND_URL || 'https://farm-score.vercel.app'
+
+      if (user.isNewUser) {
+        const params = new URLSearchParams({ googleId: user.googleId, name: user.name, email: user.email, avatar: user.avatar || '' })
+        return res.redirect(`${FRONTEND}/complete-profile?${params.toString()}`)
+      }
+
+      const token  = generateToken(user)
+      const params = new URLSearchParams({ token, id: user.id, name: user.name, email: user.email, role: user.role })
+      const dest   = user.role === 'admin' ? '/admin' : user.role === 'lender' ? '/lender' : '/farmer'
+      res.redirect(`${FRONTEND}${dest}?${params.toString()}`)
+    } catch (err) {
+      console.error('Google callback error:', err)
+      res.redirect(`${process.env.FRONTEND_URL || 'https://farm-score.vercel.app'}/login?error=callback_failed`)
+    }
+  }
+)
+
+// POST /api/auth/complete-google-signup
+router.post('/complete-google-signup', async (req, res) => {
+  try {
+    const { googleId, name, email, avatar, role, organization, adminSecret } = req.body
+    if (!googleId || !email || !role)
+      return res.status(400).json({ success: false, error: 'Missing required fields.' })
+
+    if (role === 'admin') {
+      if (!adminSecret || adminSecret !== process.env.ADMIN_SECRET)
+        return res.status(403).json({ success: false, error: 'Invalid admin secret key.' })
+    }
+    if (role === 'lender') {
+      if (!organization || !organization.trim())
+        return res.status(400).json({ success: false, error: 'Organization is required for lender accounts.' })
+      if (!adminSecret || adminSecret !== process.env.LENDER_SECRET)
+        return res.status(403).json({ success: false, error: 'Invalid lender secret key. Contact your administrator.' })
+    }
+
+    const existing = await runQuery(`MATCH (u:User { email: $email }) RETURN u`, { email })
+    if (existing.length > 0) {
+      const user  = existing[0].get('u').properties
+      const token = generateToken(user)
+      return res.json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
+    }
+
+    const records = await runQuery(
+      `CREATE (u:User {
+        id: $id, name: $name, email: $email, googleId: $googleId, avatar: $avatar,
+        role: $role, organization: $organization, status: 'active', createdAt: $createdAt
+      }) RETURN u`,
+      {
+        id: `user_${Date.now()}`, name, email, googleId, avatar: avatar || '',
+        role, organization: organization || '', createdAt: new Date().toISOString()
+      }
+    )
+
+    const user  = records[0].get('u').properties
+    const token = generateToken(user)
+    return res.status(201).json({ success: true, token, user: { id: user.id, name: user.name, email: user.email, role: user.role } })
+  } catch (err) {
+    console.error('Complete Google signup error:', err)
+    return res.status(500).json({ success: false, error: 'Signup failed.' })
   }
 })
 

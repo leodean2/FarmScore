@@ -1,18 +1,45 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './context/AuthContext'
-import ProtectedRoute from './components/layout/ProtectedRoute'
-import LenderLayout   from './components/layout/LenderLayout'
-import AdminLayout    from './components/layout/AdminLayout'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import ProtectedRoute  from './components/layout/ProtectedRoute'
+import LenderLayout    from './components/layout/LenderLayout'
+import AdminLayout     from './components/layout/AdminLayout'
 
-import Login          from './pages/Login'
+import Login           from './pages/Login'
+import CompleteProfile from './pages/CompleteProfile'
 import FarmerDashboard from './pages/farmer/FarmerDashboard'
-import Dashboard      from './pages/lender/Dashboard'
-import AllFarmers     from './pages/lender/AllFarmers'
-import Pending        from './pages/lender/Pending'
-import Approved       from './pages/lender/Approved'
-import AdminDashboard from './pages/admin/AdminDashboard'
-import Users          from './pages/admin/Users'
-import Settings       from './pages/admin/Settings'
+import Dashboard       from './pages/lender/Dashboard'
+import AllFarmers      from './pages/lender/AllFarmers'
+import Pending         from './pages/lender/Pending'
+import Approved        from './pages/lender/Approved'
+import AdminDashboard  from './pages/admin/AdminDashboard'
+import Users           from './pages/admin/Users'
+import Settings        from './pages/admin/Settings'
+
+// Handles token params injected by Google OAuth callback redirect
+function OAuthHandler() {
+  const { login } = useAuth()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const token  = params.get('token')
+    const role   = params.get('role')
+    const id     = params.get('id')
+    const name   = params.get('name')
+    const email  = params.get('email')
+
+    if (token && role) {
+      login(token, { id, name, email, role })
+      window.history.replaceState({}, '', location.pathname)
+      const dest = role === 'admin' ? '/admin' : role === 'lender' ? '/lender' : '/farmer'
+      navigate(dest, { replace: true })
+    }
+  }, [location.search])
+
+  return null
+}
 
 function AdminPage({ children }) {
   return (
@@ -26,9 +53,11 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <OAuthHandler />
         <Routes>
           {/* Public */}
-          <Route path="/login" element={<Login />} />
+          <Route path="/login"            element={<Login />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
 
           {/* Farmer */}
           <Route path="/farmer" element={
